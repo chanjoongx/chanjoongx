@@ -1,0 +1,1 @@
+Drawn by .github/workflows/hero.yml every hour (hero/render.py on main) from calendar.json, the contribution calendar as GitHub gives it: the README's picture, for the part of the day it is in Seoul (night). Nothing here is edited by hand.
