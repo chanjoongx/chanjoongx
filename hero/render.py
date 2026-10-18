@@ -10,11 +10,13 @@ from the start, and nothing moves. A reader who asks for reduced motion gets the
 today, or asleep at night.
 
 Two layouts, each in a light and a dark picture: wide, beside the README's column at 846 px, and narrow, for phones
-and tablets. The workflow (.github/workflows/hero.yml) fetches the calendar (calendar.graphql) and runs this every
-hour, and puts what it draws on the output branch, which README.md reads.
+and tablets. The workflow (.github/workflows/hero.yml) fetches the calendar (calendar.graphql, for the weeks `span`
+gives) and runs this every hour, and puts what it draws on the output branch, which README.md reads.
 
 Standard library only: the text comes drawn, as glyph outlines, from kit.json (kit.py makes it from the fonts).
 
+    python hero/render.py span
+        prints the range to ask calendar.graphql for, from and to: the weeks drawn, from a Sunday to now (UTC)
     python hero/render.py CALENDAR PART OUT
         CALENDAR  the answer to calendar.graphql, or a calendar.json this wrote
         PART      morning, afternoon, evening or night; auto for the part it is in Seoul now, which also wants the
@@ -45,7 +47,7 @@ PARTS = {  # the part of the day in Seoul, by the hour there; the dog sleeps at 
     "night": (23, 0, 1, 2, 3, 4, 5),
 }
 SEOUL = datetime.timezone(datetime.timedelta(hours=9))  # Korea keeps no summer time
-YEAR = 52  # weeks; the busiest of them sets the grass's scale, in both layouts
+YEAR = 52  # weeks: those asked for (span), and the busiest of them sets the grass's scale, in both layouts
 
 # light: the site's ink on white, and its muted slate for the second tone (5.4:1); the grass in GitHub's greens for
 # the contribution graph, darkest at the foot, its tips still 3.2:1 on white, as the tips are where a week's height
@@ -170,12 +172,23 @@ def cell(c: int, r: int, px: int) -> str:
 
 
 # ---- the calendar ---------------------------------------------------------------------------------------------
+def span(now: datetime.datetime) -> tuple[str, str]:
+    """The range to ask calendar.graphql for, from and to, in UTC as the workflow's calendar counts its days: the YEAR
+    weeks the picture draws, the oldest from its Sunday, to now. Asked for none, GitHub takes a year back from today,
+    widened to that day's Sunday, and on a Sunday (on a Monday too, in a year with a 29 February) that reaches a 54th
+    week; its calendar holds 53, and it leaves the oldest out of its days but not out of its total, so the days would
+    not add up and nothing would be drawn all that day."""
+    now = now.astimezone(datetime.timezone.utc)
+    start = now.date() - datetime.timedelta(days=(now.weekday() + 1) % 7, weeks=YEAR - 1)
+    return f"{start}T00:00:00Z", now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def load_calendar(raw: dict, today: datetime.date | None = None) -> list[list[tuple[str, int]]]:
     """The weeks, oldest first, each its days as (date, contributions), from the GraphQL answer or a calendar.json
     this wrote. Checked, so that a bad answer stops the run (the output branch keeps the last pictures) rather than
     drawing a wrong lawn: the days one after another in weeks from Sunday, whole counts that add up to the calendar's
-    own total, some contributions in the last year (none at all is likelier an outage than a year away), and, given
-    `today`, a last day within a day of it (not an old calendar)."""
+    own total (as they do for the weeks `span` asks for), some contributions in the last year (none at all is likelier
+    an outage than a year away), and, given `today`, a last day within a day of it (not an old calendar)."""
     total = None
     try:
         if "weeks" in raw:
@@ -444,10 +457,13 @@ def draw(raw: dict, part: str, out: Path, today: datetime.date | None = None) ->
 
 def main(argv: list[str], now: datetime.datetime | None = None) -> int:
     """The command; `now` (aware) stands in for the clock, for the tests."""
+    now = (now or datetime.datetime.now(datetime.timezone.utc)).astimezone(datetime.timezone.utc)
+    if argv[1:] == ["span"]:
+        print(*span(now))
+        return 0
     if len(argv) != 4 or argv[2] not in (*PARTS, "auto"):
         print(__doc__.strip().split("\n\n")[-1], file=sys.stderr)
         return 2
-    now = (now or datetime.datetime.now(datetime.timezone.utc)).astimezone(datetime.timezone.utc)
     auto = argv[2] == "auto"
     part = part_at(now.astimezone(SEOUL).hour) if auto else argv[2]
     try:

@@ -180,6 +180,23 @@ class TheCalendar(unittest.TestCase):
                     R.draw(raw, "evening", out)
                 self.assertFalse(out.exists(), "nothing is written for a bad answer")
 
+    def test_the_range_asked_for_is_the_weeks_drawn(self):
+        """span asks for the YEAR weeks the picture draws, from a Sunday to now, on any day of the week and at either
+        end of it (in a year with a 29 February too), and always within the year GitHub allows."""
+        utc = datetime.timezone.utc
+        sundays = (datetime.datetime(2026, 10, 18, tzinfo=utc), datetime.datetime(2028, 3, 5, tzinfo=utc))
+        for now in [s + datetime.timedelta(days=d, seconds=t) for s in sundays for d in range(7) for t in (0, 86399)]:
+            with self.subTest(now=now):
+                start, to = (datetime.datetime.fromisoformat(v) for v in R.span(now))
+                self.assertEqual(to, now)
+                self.assertEqual((start.weekday(), start.time(), start.utcoffset()),
+                                 (6, datetime.time(0), datetime.timedelta(0)), "a Sunday, as it starts in UTC")
+                self.assertEqual((now.date() - start.date()).days // 7 + 1, R.YEAR, "the weeks to today's, the last")
+                self.assertLess(now - start, datetime.timedelta(days=365))
+        # the Sunday GitHub's own year first broke on: its total counted a 54th week its calendar left out of the days
+        self.assertEqual(R.span(datetime.datetime(2026, 10, 18, 0, 51, 46, tzinfo=utc)),
+                         ("2025-10-26T00:00:00Z", "2026-10-18T00:51:46Z"))
+
     def test_drawing_for_now_wants_a_calendar_that_ends_today(self):
         raw = graphql(calendar(year()))
         last = datetime.date(2025, 10, 12) + datetime.timedelta(days=52 * 7 + 3)
@@ -459,6 +476,10 @@ class TheCommand(unittest.TestCase):
             code, out, err = self.run_main(str(cal), "auto", str(Path(d) / "out4"), now=noon + datetime.timedelta(days=2))
             self.assertEqual((code, out), (1, ""), "the calendar is two days old")
             self.assertIn("not about today", err)
+
+    def test_it_says_the_range_to_ask_for(self):
+        sunday = datetime.datetime(2026, 10, 18, 9, 51, 46, tzinfo=R.SEOUL)  # 00:51 in UTC
+        self.assertEqual(self.run_main("span", now=sunday), (0, "2025-10-26T00:00:00Z 2026-10-18T00:51:46Z\n", ""))
 
     def test_it_refuses_what_it_cannot_draw(self):
         with tempfile.TemporaryDirectory() as d:

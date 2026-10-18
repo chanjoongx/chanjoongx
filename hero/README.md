@@ -24,13 +24,16 @@ again every hour.
 ## How it stays on the hour
 
 The workflow `.github/workflows/hero.yml` runs every hour, and on a push that changes `hero/`. It runs the tests,
-fetches the calendar with `calendar.graphql` and the workflow's own token, and draws it with `render.py`, which uses
-the standard library only, so nothing is installed. When anything it draws differs from what the `output` branch
-holds (the branch README.md points at), it replaces that branch with a single commit of the new files; that is the
-pictures, or the calendar kept beside them, which gains a day at midnight (UTC) even when the pictures stay the same.
-If the calendar does not come, or does not check out (a day missing or out of order, days that do not add up to its
-total, a year without a contribution, a last day that is not about today), nothing is published, and the branch
-keeps the last pictures.
+fetches the calendar with `calendar.graphql` and the workflow's own token, for the 52 weeks it draws (from a Sunday
+to now, as `render.py span` gives them), and draws it with `render.py`, which uses the standard library only, so
+nothing is installed. The weeks are asked for, as GitHub's own year (a year back from today, widened to that day's
+Sunday) reaches a 54th week on a Sunday, and on a Monday too in a year with a 29 February: its calendar holds 53, and
+the week it leaves out of the days it still counts in its total, so the days would not add up and nothing would be
+drawn all that day. When anything it draws differs from what the `output` branch holds (the branch README.md points
+at), it replaces that branch with a single commit of the new files; that is the pictures, or the calendar kept beside
+them, which gains a day at midnight (UTC) even when the pictures stay the same. If the calendar does not come, or
+does not check out (a day missing or out of order, days that do not add up to its total, a year without a
+contribution, a last day that is not about today), nothing is published, and the branch keeps the last pictures.
 
 Private contributions count as they do on the profile: as numbers, nothing else. The workflow's calendar counts days
 in UTC, as the public profile does; your own token's counts them in your time zone, so a contribution made near
@@ -45,7 +48,9 @@ commit that changes its `cron` line. Other pushes do not wake it.
 
 ```sh
 python -m unittest discover -s hero -p "test_*.py"
-gh api graphql -f login=chanjoongx -F query=@hero/calendar.graphql > calendar.json
+span=$(python hero/render.py span)
+gh api graphql -f login=chanjoongx -f from="${span% *}" -f to="${span#* }" -F query=@hero/calendar.graphql \
+  > calendar.json
 python hero/render.py calendar.json evening out
 ```
 

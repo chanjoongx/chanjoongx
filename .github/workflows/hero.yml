@@ -1,8 +1,8 @@
 # Draws the README's picture every hour: my contribution calendar as a lawn, and the dog at today in Seoul's part of
-# the day. It fetches the calendar (hero/calendar.graphql, with the workflow's own token), draws it with
-# hero/render.py (the standard library only, so nothing is installed), and puts what it drew on the output branch,
-# which README.md reads, when any of it has changed (the pictures, or the calendar beside them). If the calendar does
-# not come or does not check out, nothing is published, and the branch keeps the last pictures.
+# the day. It fetches the calendar of the weeks it draws (hero/calendar.graphql, with the workflow's own token), draws
+# it with hero/render.py (the standard library only, so nothing is installed), and puts what it drew on the output
+# branch, which README.md reads, when any of it has changed (the pictures, or the calendar beside them). If the
+# calendar does not come or does not check out, nothing is published, and the branch keeps the last pictures.
 name: hero
 
 on:
@@ -35,9 +35,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # the weeks it draws, from a Sunday to now; GitHub's own year, asked for none, does not add up on a Sunday
+          span=$(python3 hero/render.py span)
           for try in 1 2 3; do
-            gh api graphql -f login="$GITHUB_REPOSITORY_OWNER" -F query=@hero/calendar.graphql \
-              > "$RUNNER_TEMP/calendar.json" && exit 0
+            gh api graphql -f login="$GITHUB_REPOSITORY_OWNER" -f from="${span% *}" -f to="${span#* }" \
+              -F query=@hero/calendar.graphql > "$RUNNER_TEMP/calendar.json" && exit 0
             echo "the calendar did not come (try $try of 3)"
             [ "$try" = 3 ] || sleep 20
           done

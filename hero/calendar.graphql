@@ -1,7 +1,7 @@
-# The contribution calendar of the last year, as the profile shows it: the weeks the lawn grows from (render.py).
-query($login: String!) {
+# The contribution calendar from $from to $to: the weeks the lawn grows from, which `render.py span` gives (and why).
+query($login: String!, $from: DateTime!, $to: DateTime!) {
   user(login: $login) {
-    contributionsCollection {
+    contributionsCollection(from: $from, to: $to) {
       contributionCalendar {
         totalContributions
         weeks {
