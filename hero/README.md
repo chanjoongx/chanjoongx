@@ -35,10 +35,10 @@ them, which gains a day at midnight (UTC) even when the pictures stay the same. 
 does not check out (a day missing or out of order, days that do not add up to its total, a year without a
 contribution, a last day that is not about today), nothing is published, and the branch keeps the last pictures.
 
-A calendar that does not come (four tries over two minutes, each given a minute) leaves a warning on the run, and
-the next run asks again: GitHub is away for a while, and the pictures stay. The run fails only once they are a day
-old, since a working run changes them every day. A calendar that does not check out fails the run at once, and so
-does a push to `output` that does not go in three tries.
+The calendar is asked for four times over two minutes, each ask given a minute, and a push to `output` is tried
+three times, so a short hiccup at GitHub does not fail the run. Past those tries the run fails, and GitHub mails the
+failure; the next run tries again by itself. A calendar that does not check out fails the run at once, with a
+`render:` line that says why.
 
 Private contributions count as they do on the profile: as numbers, nothing else. The workflow's calendar counts days
 in UTC, as the public profile does; your own token's counts them in your time zone, so a contribution made near

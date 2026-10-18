@@ -2,9 +2,10 @@
 # the day. It fetches the calendar of the weeks it draws (hero/calendar.graphql, with the workflow's own token), draws
 # it with hero/render.py (the standard library only, so nothing is installed), and puts what it drew on the output
 # branch, which README.md reads, when any of it has changed (the pictures, or the calendar beside them). If the
-# calendar does not come or does not check out, nothing is published, and the branch keeps the last pictures. A
-# calendar that does not come (GitHub away for a while) fails the run only once those pictures are a day old; one
-# that does not check out fails it at once.
+# calendar does not come or does not check out, nothing is published, and the branch keeps the last pictures. The
+# calendar is asked for four times over two minutes (each ask given a minute) and the push is tried three times, so
+# a short hiccup at GitHub does not fail the run; past those tries it fails, as it does at once for a calendar that
+# does not check out, and GitHub mails the failure.
 name: hero
 
 on:
@@ -33,7 +34,6 @@ jobs:
         run: python3 -m unittest discover -s hero -p "test_*.py"
 
       - name: Fetch the contribution calendar
-        id: fetch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -46,21 +46,9 @@ jobs:
             echo "the calendar did not come (try $try of 4)"
             [ "$try" = 4 ] || sleep $((20 * try))
           done
-
-          # GitHub is away for now: the next run asks again, and the branch keeps its pictures meanwhile. The run fails
-          # once they are a day old, as a working run changes them every day (the calendar gains a day at midnight, UTC)
-          last=0
-          if git fetch -q --depth=1 origin output; then last=$(git log -1 --format=%ct FETCH_HEAD); fi
-          age=$((EPOCHSECONDS - last))
-          if [ "$age" -lt 86400 ]; then
-            echo "::warning::The calendar did not come; the pictures on the output branch, $((age / 3600)) h old, stay."
-            echo "came=no" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
           exit 1
 
       - name: Draw the picture and put it on the output branch
-        if: steps.fetch.outputs.came != 'no'
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/out"
